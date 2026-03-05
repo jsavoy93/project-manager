@@ -16,5 +16,4 @@ ENV PORT=3000
 ENV DB_PATH=/data/pm.db
 
 EXPOSE 3000
-VOLUME ["/data"]
 CMD ["node", "server/index.js"]

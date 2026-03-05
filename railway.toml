@@ -5,7 +5,7 @@ builder = "dockerfile"
 startCommand = "node server/index.js"
 healthcheckPath = "/api/v1/health"
 healthcheckTimeout = 30
-restartPolicyType = "on-failure"
+restartPolicyType = "ON_FAILURE"
 
 [[volumes]]
 mountPath = "/data"

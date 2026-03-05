@@ -1,0 +1,14 @@
+version: "3.9"
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      - pm_data:/data
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - DB_PATH=/data/pm.db
+volumes:
+  pm_data:

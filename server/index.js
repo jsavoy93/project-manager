@@ -25,6 +25,7 @@ api.use('/', require('./routes/dependencies'));
 api.use('/', require('./routes/comments'));
 api.use('/team', require('./routes/team'));
 api.use('/', require('./routes/exports'));
+api.use('/', require('./routes/imports'));
 api.use('/', require('./routes/search'));
 
 app.use('/api/v1', api);

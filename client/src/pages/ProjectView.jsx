@@ -9,6 +9,7 @@ import ListView from '../components/ListView';
 import TaskDrawer from '../components/TaskDrawer';
 import TaskForm from '../components/TaskForm';
 import FilterBar from '../components/FilterBar';
+import CSVImportModal from '../components/CSVImportModal';
 import { Skeleton } from '../components/Skeleton';
 
 export default function ProjectView({ addToast }) {
@@ -16,6 +17,7 @@ export default function ProjectView({ addToast }) {
   const [view, setView] = useState('gantt');
   const [selectedTaskId, setSelectedTaskId] = useState(null);
   const [showNewTask, setShowNewTask] = useState(false);
+  const [showImport, setShowImport] = useState(false);
   const [filters, setFilters] = useState({});
   const [zoom, setZoom] = useState('week');
 
@@ -160,12 +162,15 @@ export default function ProjectView({ addToast }) {
 
             <div className="h-4 w-px bg-zinc-200 dark:bg-zinc-800" />
 
+            {/* Import */}
+            <button onClick={() => setShowImport(true)} className="btn-secondary text-xs">Import CSV</button>
+
             {/* Export */}
             <div className="relative group">
               <button className="btn-secondary text-xs">Export ▾</button>
-              <div className="absolute right-0 mt-1 w-32 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded shadow-lg hidden group-hover:block z-10">
+              <div className="absolute right-0 mt-1 w-36 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded shadow-lg hidden group-hover:block z-10">
                 <button onClick={() => api.exportExcel(id)} className="w-full text-left px-3 py-2 text-xs hover:bg-zinc-50 dark:hover:bg-zinc-800">Excel (.xlsx)</button>
-                <button onClick={() => api.exportCSV(id)} className="w-full text-left px-3 py-2 text-xs hover:bg-zinc-50 dark:hover:bg-zinc-800">CSV</button>
+                <button onClick={() => api.exportCSV(id)} className="w-full text-left px-3 py-2 text-xs hover:bg-zinc-50 dark:hover:bg-zinc-800">CSV (importable)</button>
               </div>
             </div>
 
@@ -222,6 +227,15 @@ export default function ProjectView({ addToast }) {
           onDelete={handleDeleteTask}
           onRefetch={refetchTasks}
           addToast={addToast}
+        />
+      )}
+
+      {/* CSV import modal */}
+      {showImport && (
+        <CSVImportModal
+          projectId={id}
+          onClose={() => setShowImport(false)}
+          onImported={() => { refetchTasks(); refetchGroups(); addToast('Tasks imported successfully', 'success'); }}
         />
       )}
 

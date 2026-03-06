@@ -170,23 +170,60 @@ router.get('/projects/:id/export/excel', asyncHandler(async (req, res) => {
   res.end();
 }));
 
-// CSV export
+// CSV export (full-fidelity, importable format)
 router.get('/projects/:id/export/tasks', asyncHandler(async (req, res) => {
   const project = db.prepare('SELECT * FROM projects WHERE id = ?').get(req.params.id);
   if (!project) return res.status(404).json({ error: 'Project not found' });
 
   const tasks = db.prepare('SELECT * FROM tasks WHERE project_id = ? AND is_template = 0 ORDER BY position').all(req.params.id);
+  const groups = db.prepare('SELECT * FROM task_groups WHERE project_id = ? ORDER BY position').all(req.params.id);
   const members = db.prepare('SELECT * FROM team_members').all();
   const memberMap = {};
   for (const m of members) memberMap[m.id] = m.name;
+  const groupMap = {};
+  for (const g of groups) groupMap[g.id] = g.name;
 
-  const headers = ['ID', 'Title', 'Status', 'Priority', 'Start Date', 'End Date', 'Duration', '% Complete', 'Assigned To'];
+  function esc(val) {
+    const s = String(val ?? '');
+    return (s.includes(',') || s.includes('"') || s.includes('\n')) ? `"${s.replace(/"/g, '""')}"` : s;
+  }
+
+  const headers = [
+    'title', 'description', 'status', 'priority',
+    'start_date', 'end_date', 'percent_complete',
+    'group', 'tags', 'milestone', 'assigned_to',
+    'predecessors', 'successors',
+    'color', 'baseline_start', 'baseline_end', 'recurrence',
+  ];
+
+  // Build a title→id map for dependency labels
+  const taskTitleMap = {};
+  for (const t of tasks) taskTitleMap[t.id] = t.title;
+
   const rows = tasks.map(t => {
-    const assigneeNames = t.assigned_to ? t.assigned_to.split(',').filter(Boolean).map(id => memberMap[id] || id).join('; ') : '';
-    return [t.id, `"${(t.title || '').replace(/"/g, '""')}"`, t.status, t.priority, t.start_date || '', t.end_date || '', t.duration_days || '', t.percent_complete, `"${assigneeNames}"`];
+    const tags = db.prepare('SELECT tag FROM task_tags WHERE task_id = ?').all(t.id).map(r => r.tag).join(';');
+    const preds = db.prepare('SELECT predecessor_task_id, dependency_type, lag_days FROM task_dependencies WHERE successor_task_id = ?').all(t.id);
+    const succs = db.prepare('SELECT successor_task_id, dependency_type, lag_days FROM task_dependencies WHERE predecessor_task_id = ?').all(t.id);
+    const assigneeNames = t.assigned_to ? t.assigned_to.split(',').filter(Boolean).map(id => memberMap[id] || '').filter(Boolean).join(';') : '';
+    const predStr = preds.map(d => {
+      const title = taskTitleMap[d.predecessor_task_id] || String(d.predecessor_task_id);
+      return `${title}(${d.dependency_type}${d.lag_days ? ':' + d.lag_days : ''})`;
+    }).join(';');
+    const succStr = succs.map(d => {
+      const title = taskTitleMap[d.successor_task_id] || String(d.successor_task_id);
+      return `${title}(${d.dependency_type}${d.lag_days ? ':' + d.lag_days : ''})`;
+    }).join(';');
+
+    return [
+      esc(t.title), esc(t.description), t.status, t.priority,
+      t.start_date || '', t.end_date || '', t.percent_complete,
+      esc(groupMap[t.group_id] || ''), esc(tags), t.milestone ? 'yes' : 'no', esc(assigneeNames),
+      esc(predStr), esc(succStr),
+      t.color || '', t.baseline_start || '', t.baseline_end || '', t.recurrence || '',
+    ].join(',');
   });
 
-  const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+  const csv = [headers.join(','), ...rows].join('\n');
   res.setHeader('Content-Type', 'text/csv');
   res.setHeader('Content-Disposition', `attachment; filename="${project.name.replace(/[^a-zA-Z0-9]/g, '_')}_tasks.csv"`);
   res.send(csv);

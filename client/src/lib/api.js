@@ -71,4 +71,14 @@ export const api = {
   exportCSV: (projectId) => {
     window.open(BASE + `/projects/${projectId}/export/tasks`);
   },
+
+  // Import
+  importCSV: (projectId, csvText, mode = 'append') =>
+    request(`/projects/${projectId}/import/tasks`, {
+      method: 'POST',
+      body: { csv: csvText, mode },
+    }),
+  downloadImportTemplate: (projectId) => {
+    window.open(BASE + `/projects/${projectId}/import/template`);
+  },
 };
